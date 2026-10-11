@@ -1,0 +1,44 @@
+{
+  "1": [
+    {
+      "id": 1,
+      "ingilizce": "What's your name?",
+      "turkce": "Adın ne?",
+      "baglam": "Tanışma",
+      "ipucu": "Bunu bilmiyorsan a*na koyim!",
+      "varyasyonlar": ["What is your name?", "May I ask your name?"]
+    },
+    {
+      "id": 2,
+      "ingilizce": "My name is Ali.",
+      "turkce": "Benim adım Ali.",
+      "baglam": "Cevap",
+      "ipucu": "'My name is' kalıbı, 'I am name' değil!",
+      "varyasyonlar": ["I'm Ali."]
+    },
+    {
+      "id": 3,
+      "ingilizce": "Nice to meet you.",
+      "turkce": "Tanıştığımıza memnun oldum.",
+      "baglam": "Kibar",
+      "ipucu": "Bunu demezsen kaba s*ktiğim olursun!",
+      "varyasyonlar": ["Nice to meet you too."]
+    },
+    {
+      "id": 4,
+      "ingilizce": "How are you?",
+      "turkce": "Nasılsın?",
+      "baglam": "Selam",
+      "ipucu": "'How you are' değil, 'How are you'!",
+      "varyasyonlar": ["How are you doing?", "How's it going?"]
+    },
+    {
+      "id": 5,
+      "ingilizce": "I'm fine, thanks.",
+      "turkce": "İyiyim, sağol.",
+      "baglam": "Cevap",
+      "ipucu": "'I fine' değil, 'I'm fine'! To be'ı s*ktin attın!",
+      "varyasyonlar": ["I'm good, thanks.", "I'm okay."]
+    }
+  ]
+}

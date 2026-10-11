@@ -1,0 +1,27 @@
+cat > .gitignore << 'EOF'
+# Environment - API keys MUST NOT be committed
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+
+# Database
+*.db
+*.sqlite3
+
+# Audio
+*.mp3
+*.wav
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+EOF
