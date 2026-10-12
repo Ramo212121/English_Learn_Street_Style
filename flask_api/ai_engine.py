@@ -2,6 +2,8 @@ import os
 import json
 from dotenv import load_dotenv
 from groq import Groq
+from database import cumle_getir_db, gun_getir_db
+
 
 load_dotenv()
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
@@ -40,14 +42,14 @@ def ai_cevap(kullanici_mesaji):
     except Exception as e:
         return f"AI s*kti, hata verdi lan: {str(e)}"
 
+
+
+
 def cumle_getir(gun, sira):
-    yol = os.path.join(os.path.dirname(__file__), "..", "data", "cumleler.json")
-    with open(yol, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    return data[str(gun)]["cumleler"][sira]
+    """Veritabanından cümle getirir."""
+    return cumle_getir_db(gun, sira)
+
 
 def gun_getir(gun):
-    yol = os.path.join(os.path.dirname(__file__), "..", "data", "cumleler.json")
-    with open(yol, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    return data[str(gun)]
+    """Veritabanından gün getirir."""
+    return gun_getir_db(gun)
