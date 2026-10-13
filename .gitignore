@@ -25,3 +25,5 @@ venv/
 .vscode/
 .idea/
 EOFdata/sesler/
+*.mp3
+data/sesler/
