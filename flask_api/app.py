@@ -2,7 +2,8 @@ from flask import Flask, request, jsonify
 from ai_engine import ai_cevap, cumle_getir, gun_getir
 from database import (
     kullanici_olustur, kullanici_getir,
-    cevap_kaydet, tekrar_listesi, baglanti
+    cevap_kaydet, tekrar_listesi, baglanti,
+    rastgele_cumle, quiz_cevap_kontrol, quiz_istatistik
 )
 
 app = Flask(__name__)
@@ -13,16 +14,19 @@ def ana_sayfa():
     return jsonify({
         "mesaj": "S*ktiğimin İngilizcesi API çalışıyor!",
         "durum": "aktif",
-        "versiyon": "0.3",
+        "versiyon": "0.4",
         "endpointler": [
             "/",
             "/gun/<int:gun>",
             "/cumle/<int:gun>/<int:sira>",
             "/sohbet",
             "/kullanici (POST)",
-            "/kullanici/<int:kullanici_id>",
+            "/kullanici/<int:id>",
             "/cevapla (POST)",
-            "/tekrar/<int:kullanici_id>"
+            "/tekrar/<int:id>",
+            "/quiz?gun=<int>",
+            "/quiz/cevapla (POST)",
+            "/istatistik/<int:id>"
         ]
     })
 
@@ -53,11 +57,9 @@ def sohbet():
 
 @app.route("/kullanici", methods=["POST"])
 def kullanici():
-    """Yeni kullanıcı oluşturur."""
     data = request.get_json()
     if not data or "isim" not in data:
         return jsonify({"hata": "İsim gerekli lan!"}), 400
-
     kullanici_id = kullanici_olustur(data["isim"])
     return jsonify({
         "kullanici_id": kullanici_id,
@@ -68,7 +70,6 @@ def kullanici():
 
 @app.route("/kullanici/<int:kullanici_id>", methods=["GET"])
 def kullanici_bilgi(kullanici_id):
-    """Kullanıcı bilgilerini getirir."""
     k = kullanici_getir(kullanici_id)
     if not k:
         return jsonify({"hata": "Kullanıcı bulunamadı lan!"}), 404
@@ -77,15 +78,11 @@ def kullanici_bilgi(kullanici_id):
 
 @app.route("/cevapla", methods=["POST"])
 def cevapla():
-    """Kullanıcının cevabını kaydeder."""
     data = request.get_json()
     if not data or "kullanici_id" not in data or "cumle_id" not in data or "dogru_mu" not in data:
         return jsonify({"hata": "Eksik bilgi lan!"}), 400
-
     sonuc = cevap_kaydet(
-        data["kullanici_id"],
-        data["cumle_id"],
-        data["dogru_mu"]
+        data["kullanici_id"], data["cumle_id"], data["dogru_mu"]
     )
     return jsonify({
         "mesaj": "Kaydedildi!",
@@ -96,9 +93,7 @@ def cevapla():
 
 @app.route("/tekrar/<int:kullanici_id>", methods=["GET"])
 def tekrar(kullanici_id):
-    """Kullanıcının tekrar etmesi gereken cümleleri getirir."""
     cumle_idler = tekrar_listesi(kullanici_id)
-
     cumleler = []
     conn = baglanti()
     cursor = conn.cursor()
@@ -114,12 +109,67 @@ def tekrar(kullanici_id):
                 "ipucu": row["ipucu"]
             })
     conn.close()
-
     return jsonify({
         "kullanici_id": kullanici_id,
         "tekrar_sayisi": len(cumleler),
         "cumleler": cumleler
     })
+
+
+# ============ QUIZ ENDPOINT'LERİ ============
+
+@app.route("/quiz", methods=["GET"])
+def quiz():
+    """Rastgele bir quiz sorusu getirir."""
+    gun = request.args.get("gun", type=int)
+    cumle = rastgele_cumle(gun)
+
+    if not cumle:
+        return jsonify({"hata": "S*ktiğimin cümlesi bulunamadı!"}), 404
+
+    return jsonify({
+        "cumle_id": cumle["id"],
+        "turkce": cumle["turkce"],
+        "baglam": cumle["baglam"],
+        "ipucu": cumle["ipucu"],
+        "soru": "Bunun İngilizcesi ne?",
+        "cumle_uzunlugu": len(cumle["ingilizce"].split())
+    })
+
+
+@app.route("/quiz/cevapla", methods=["POST"])
+def quiz_cevapla():
+    """Kullanıcının quiz cevabını kontrol eder."""
+    data = request.get_json()
+    if not data or "kullanici_id" not in data or "cumle_id" not in data or "cevap" not in data:
+        return jsonify({"hata": "Eksik bilgi lan!"}), 400
+
+    sonuc = quiz_cevap_kontrol(data["cumle_id"], data["cevap"])
+
+    if not sonuc:
+        return jsonify({"hata": "Cümle bulunamadı!"}), 404
+
+    cevap_kaydet(data["kullanici_id"], data["cumle_id"], sonuc["dogru_mu"])
+
+    if sonuc["dogru_mu"]:
+        ai_mesaj = ai_cevap(f"Kullanıcı doğru cevap verdi: '{data['cevap']}'. Ona kısa bir övgü küfürü yaz.")
+    else:
+        ai_mesaj = ai_cevap(f"Kullanıcı yanlış cevap verdi: '{data['cevap']}'. Doğrusu: '{sonuc['dogru_cevap']}'. Ona kısa bir azar küfürü yaz.")
+
+    return jsonify({
+        "dogru_mu": sonuc["dogru_mu"],
+        "dogru_cevap": sonuc["dogru_cevap"],
+        "ai_mesaj": ai_mesaj
+    })
+
+
+@app.route("/istatistik/<int:kullanici_id>", methods=["GET"])
+def istatistik(kullanici_id):
+    """Kullanıcının quiz istatistiklerini getirir."""
+    ist = quiz_istatistik(kullanici_id)
+    if not ist:
+        return jsonify({"hata": "Kullanıcı bulunamadı!"}), 404
+    return jsonify(ist)
 
 
 if __name__ == "__main__":

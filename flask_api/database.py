@@ -262,6 +262,98 @@ def tekrar_listesi(kullanici_id):
     return liste
 
 
+# ============ QUIZ FONKSİYONLARI ============
+
+import random
+
+
+def rastgele_cumle(gun=None):
+    """Rastgele bir cümle getirir. Gün belirtilirse o günden."""
+    conn = baglanti()
+    cursor = conn.cursor()
+
+    if gun:
+        cursor.execute("""
+            SELECT * FROM cumleler WHERE gun = ?
+            ORDER BY RANDOM() LIMIT 1
+        """, (gun,))
+    else:
+        cursor.execute("SELECT * FROM cumleler ORDER BY RANDOM() LIMIT 1")
+
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return None
+
+    return {
+        "id": row["id"],
+        "ingilizce": row["ingilizce"],
+        "turkce": row["turkce"],
+        "baglam": row["baglam"],
+        "ipucu": row["ipucu"],
+        "varyasyonlar": json.loads(row["varyasyonlar"]) if row["varyasyonlar"] else []
+    }
+
+
+def quiz_cevap_kontrol(cumle_id, kullanici_cevabi):
+    """Kullanıcının cevabını kontrol eder."""
+    conn = baglanti()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM cumleler WHERE id = ?", (cumle_id,))
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return None
+
+    dogru_cevap = row["ingilizce"]
+
+    def normalize(s):
+        return s.lower().strip().replace("'", "'").replace("?", "").replace(".", "").replace("!", "")
+
+    dogru_mu = normalize(kullanici_cevabi) == normalize(dogru_cevap)
+
+    if not dogru_mu:
+        varyasyonlar = json.loads(row["varyasyonlar"]) if row["varyasyonlar"] else []
+        for v in varyasyonlar:
+            if normalize(kullanici_cevabi) == normalize(v):
+                dogru_mu = True
+                break
+
+    return {
+        "dogru_mu": dogru_mu,
+        "dogru_cevap": dogru_cevap,
+        "cumle_id": cumle_id
+    }
+
+
+def quiz_istatistik(kullanici_id):
+    """Kullanıcının quiz istatistiklerini getirir."""
+    conn = baglanti()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM kullanicilar WHERE id = ?", (kullanici_id,))
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return None
+
+    toplam = row["dogru_sayisi"] + row["yanlis_sayisi"]
+    basari_orani = round((row["dogru_sayisi"] / toplam * 100), 1) if toplam > 0 else 0
+
+    return {
+        "isim": row["isim"],
+        "seviye": row["seviye"],
+        "dogru_sayisi": row["dogru_sayisi"],
+        "yanlis_sayisi": row["yanlis_sayisi"],
+        "kufur_sayisi": row["kufur_sayisi"],
+        "streak": row["streak"],
+        "toplam": toplam,
+        "basari_orani": basari_orani
+    }
+
+
 if __name__ == "__main__":
     print("🔧 Veritabanı kuruluyor...")
     tablolari_olustur()
