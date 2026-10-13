@@ -1,10 +1,12 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from ai_engine import ai_cevap, cumle_getir, gun_getir
 from database import (
     kullanici_olustur, kullanici_getir,
     cevap_kaydet, tekrar_listesi, baglanti,
     rastgele_cumle, quiz_cevap_kontrol, quiz_istatistik
 )
+from tts import ses_uret
+import hashlib
 
 app = Flask(__name__)
 
@@ -14,7 +16,7 @@ def ana_sayfa():
     return jsonify({
         "mesaj": "S*ktiğimin İngilizcesi API çalışıyor!",
         "durum": "aktif",
-        "versiyon": "0.4",
+        "versiyon": "0.5",
         "endpointler": [
             "/",
             "/gun/<int:gun>",
@@ -26,7 +28,8 @@ def ana_sayfa():
             "/tekrar/<int:id>",
             "/quiz?gun=<int>",
             "/quiz/cevapla (POST)",
-            "/istatistik/<int:id>"
+            "/istatistik/<int:id>",
+            "/ses?metin=<metin>"
         ]
     })
 
@@ -170,6 +173,25 @@ def istatistik(kullanici_id):
     if not ist:
         return jsonify({"hata": "Kullanıcı bulunamadı!"}), 404
     return jsonify(ist)
+
+
+# ============ TTS ENDPOINT'İ ============
+
+@app.route("/ses", methods=["GET"])
+def ses():
+    """Metni sese çevirir ve MP3 döndürür."""
+    metin = request.args.get("metin")
+    if not metin:
+        return jsonify({"hata": "Metin gerekli lan!"}), 400
+
+    # Güvenli dosya adı (hash)
+    dosya_adi = hashlib.md5(metin.encode()).hexdigest() + ".mp3"
+
+    try:
+        yol = ses_uret(metin, dosya_adi)
+        return send_file(yol, mimetype="audio/mpeg")
+    except Exception as e:
+        return jsonify({"hata": f"Ses üretilemedi: {e}"}), 500
 
 
 if __name__ == "__main__":
