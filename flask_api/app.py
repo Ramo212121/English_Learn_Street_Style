@@ -1,5 +1,8 @@
 from flask import Flask, request, jsonify, send_file
-from ai_engine import ai_cevap, cumle_getir, gun_getir
+from ai_engine import (
+    ai_cevap, cumle_getir, gun_getir,
+    ingilizceyi_turkce_okunusa_cevir
+)
 from database import (
     kullanici_olustur, kullanici_getir,
     cevap_kaydet, tekrar_listesi, baglanti,
@@ -7,6 +10,7 @@ from database import (
 )
 from tts import ses_uret
 import hashlib
+import os
 
 app = Flask(__name__)
 
@@ -16,7 +20,7 @@ def ana_sayfa():
     return jsonify({
         "mesaj": "S*ktiğimin İngilizcesi API çalışıyor!",
         "durum": "aktif",
-        "versiyon": "0.5",
+        "versiyon": "0.8",
         "endpointler": [
             "/",
             "/gun/<int:gun>",
@@ -28,6 +32,7 @@ def ana_sayfa():
             "/tekrar/<int:id>",
             "/quiz?gun=<int>",
             "/quiz/cevapla (POST)",
+            "/quiz/cevapla-sesli (POST)",
             "/istatistik/<int:id>",
             "/ses?metin=<metin>"
         ]
@@ -142,22 +147,28 @@ def quiz():
 
 @app.route("/quiz/cevapla", methods=["POST"])
 def quiz_cevapla():
-    """Kullanıcının quiz cevabını kontrol eder."""
+    """Quiz cevabını kontrol eder, JSON döner."""
     data = request.get_json()
     if not data or "kullanici_id" not in data or "cumle_id" not in data or "cevap" not in data:
         return jsonify({"hata": "Eksik bilgi lan!"}), 400
 
     sonuc = quiz_cevap_kontrol(data["cumle_id"], data["cevap"])
-
     if not sonuc:
         return jsonify({"hata": "Cümle bulunamadı!"}), 404
 
     cevap_kaydet(data["kullanici_id"], data["cumle_id"], sonuc["dogru_mu"])
 
     if sonuc["dogru_mu"]:
-        ai_mesaj = ai_cevap(f"Kullanıcı doğru cevap verdi: '{data['cevap']}'. Ona kısa bir övgü küfürü yaz.")
+        ai_mesaj = ai_cevap(
+            f"Kullanıcı doğru cevap verdi: '{data['cevap']}'. "
+            f"Ona kısa bir övgü küfürü yaz ve doğru cümleyi tekrarla."
+        )
     else:
-        ai_mesaj = ai_cevap(f"Kullanıcı yanlış cevap verdi: '{data['cevap']}'. Doğrusu: '{sonuc['dogru_cevap']}'. Ona kısa bir azar küfürü yaz.")
+        ai_mesaj = ai_cevap(
+            f"Kullanıcı yanlış cevap verdi: '{data['cevap']}'. "
+            f"Doğrusu: '{sonuc['dogru_cevap']}'. "
+            f"Ona kısa bir azar küfürü yaz, doğru cümleyi söyle ve tekrar ettir."
+        )
 
     return jsonify({
         "dogru_mu": sonuc["dogru_mu"],
@@ -166,9 +177,86 @@ def quiz_cevapla():
     })
 
 
+@app.route("/quiz/cevapla-sesli", methods=["POST"])
+def quiz_cevapla_sesli():
+    """Quiz cevabını kontrol eder, AI mesajını SESLİ okur."""
+    data = request.get_json()
+    if not data or "kullanici_id" not in data or "cumle_id" not in data or "cevap" not in data:
+        return jsonify({"hata": "Eksik bilgi lan!"}), 400
+
+    sonuc = quiz_cevap_kontrol(data["cumle_id"], data["cevap"])
+    if not sonuc:
+        return jsonify({"hata": "Cümle bulunamadı!"}), 404
+
+    cevap_kaydet(data["kullanici_id"], data["cumle_id"], sonuc["dogru_mu"])
+
+    # AI mesajı
+    if sonuc["dogru_mu"]:
+        ai_mesaj = ai_cevap(
+            f"Kullanıcı doğru cevap verdi: '{data['cevap']}'. "
+            f"Ona kısa bir övgü küfürü yaz ve doğru cümleyi tekrarla."
+        )
+    else:
+        ai_mesaj = ai_cevap(
+            f"Kullanıcı yanlış cevap verdi: '{data['cevap']}'. "
+            f"Doğrusu: '{sonuc['dogru_cevap']}'. "
+            f"Ona kısa bir azar küfürü yaz, doğru cümleyi söyle ve tekrar ettir."
+        )
+
+    # Türkçe okunuşa çevir
+    try:
+        ai_mesaj_okunus = ingilizceyi_turkce_okunusa_cevir(ai_mesaj)
+    except Exception as e:
+        ai_mesaj_okunus = ai_mesaj
+
+    # Metni temizle (yıldız, markdown, özel karakter)
+    temiz_metin = ai_mesaj_okunus.replace("*", "").replace("#", "").replace("`", "").replace("_", "")
+    temiz_metin = temiz_metin.replace('"', '').replace("'", "")
+    temiz_metin = temiz_metin.strip()
+    temiz_metin = temiz_metin[:500]  # Max 500 karakter
+
+    # Boş kontrolü
+    if len(temiz_metin) < 3:
+        temiz_metin = "La gardasim, dogrusu: " + sonuc["dogru_cevap"]
+
+    # Debug
+    print(f"🔍 OKUNUŞ: {temiz_metin!r}")
+
+    # Ses üret
+    dosya_adi = hashlib.md5(ai_mesaj.encode()).hexdigest() + ".mp3"
+    try:
+        ses_yolu = ses_uret(temiz_metin, dosya_adi)
+    except Exception as e:
+        # Fallback: basit metin
+        try:
+            basit_mesaj = "La gardasim, dogrusu: " + sonuc["dogru_cevap"]
+            dosya_adi = hashlib.md5(basit_mesaj.encode()).hexdigest() + ".mp3"
+            ses_yolu = ses_uret(basit_mesaj, dosya_adi)
+        except Exception as e2:
+            return jsonify({"hata": f"Ses üretilemedi: {e2}"}), 500
+
+    return jsonify({
+        "dogru_mu": sonuc["dogru_mu"],
+        "dogru_cevap": sonuc["dogru_cevap"],
+        "ai_mesaj": ai_mesaj,
+        "ai_mesaj_okunus": ai_mesaj_okunus,
+        "ses_url": f"/ses-dinle/{dosya_adi}"
+    })
+
+
+@app.route("/ses-dinle/<dosya_adi>", methods=["GET"])
+def ses_dinle(dosya_adi):
+    """Üretilmiş ses dosyasını döner."""
+    klasor = os.path.join(os.path.dirname(__file__), "..", "data", "sesler")
+    yol = os.path.join(klasor, dosya_adi)
+    try:
+        return send_file(yol, mimetype="audio/mpeg")
+    except Exception as e:
+        return jsonify({"hata": f"Ses bulunamadı: {e}"}), 404
+
+
 @app.route("/istatistik/<int:kullanici_id>", methods=["GET"])
 def istatistik(kullanici_id):
-    """Kullanıcının quiz istatistiklerini getirir."""
     ist = quiz_istatistik(kullanici_id)
     if not ist:
         return jsonify({"hata": "Kullanıcı bulunamadı!"}), 404
@@ -184,7 +272,10 @@ def ses():
     if not metin:
         return jsonify({"hata": "Metin gerekli lan!"}), 400
 
-    # Güvenli dosya adı (hash)
+    # Metni temizle
+    metin = metin.replace("*", "").replace("#", "").replace("`", "")
+    metin = metin.strip()[:500]
+
     dosya_adi = hashlib.md5(metin.encode()).hexdigest() + ".mp3"
 
     try:
