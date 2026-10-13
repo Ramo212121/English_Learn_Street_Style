@@ -1,15 +1,15 @@
 import sqlite3
 import os
 import json
+from spaced_repetition import sm2_hesapla, tekrar_zamani_geldi_mi
 
-# Veritabanı yolu
 DB_YOL = os.path.join(os.path.dirname(__file__), "..", "data", "fuckin_english.db")
 
 
 def baglanti():
     """Veritabanına bağlantı açar."""
     conn = sqlite3.connect(DB_YOL)
-    conn.row_factory = sqlite3.Row  # Dict gibi erişim için
+    conn.row_factory = sqlite3.Row
     return conn
 
 
@@ -18,7 +18,6 @@ def tablolari_olustur():
     conn = baglanti()
     cursor = conn.cursor()
 
-    # Cümleler tablosu
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS cumleler (
             id INTEGER PRIMARY KEY,
@@ -32,7 +31,6 @@ def tablolari_olustur():
         )
     """)
 
-    # Kullanıcılar tablosu
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS kullanicilar (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,7 +44,6 @@ def tablolari_olustur():
         )
     """)
 
-    # Cevaplar tablosu
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS cevaplar (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -55,6 +52,9 @@ def tablolari_olustur():
             dogru_mu BOOLEAN NOT NULL,
             tarih TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             sonraki_sorulma TIMESTAMP,
+            aralik INTEGER DEFAULT 0,
+            kolaylik REAL DEFAULT 2.5,
+            tekrar INTEGER DEFAULT 0,
             FOREIGN KEY (kullanici_id) REFERENCES kullanicilar(id),
             FOREIGN KEY (cumle_id) REFERENCES cumleler(id)
         )
@@ -73,8 +73,6 @@ def json_to_db():
 
     conn = baglanti()
     cursor = conn.cursor()
-
-    # Önce mevcut cümleleri sil (yeniden yüklemek için)
     cursor.execute("DELETE FROM cumleler")
 
     toplam = 0
@@ -86,13 +84,9 @@ def json_to_db():
                 INSERT INTO cumleler (id, gun, seviye, ingilizce, turkce, baglam, ipucu, varyasyonlar)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, (
-                cumle["id"],
-                gun,
-                seviye,
-                cumle["ingilizce"],
-                cumle["turkce"],
-                cumle.get("baglam", ""),
-                cumle.get("ipucu", ""),
+                cumle["id"], gun, seviye,
+                cumle["ingilizce"], cumle["turkce"],
+                cumle.get("baglam", ""), cumle.get("ipucu", ""),
                 json.dumps(cumle.get("varyasyonlar", []), ensure_ascii=False)
             ))
             toplam += 1
@@ -103,14 +97,12 @@ def json_to_db():
 
 
 def cumle_getir_db(gun, sira):
-    """Veritabanından belirli gün ve sıradaki cümleyi getirir."""
+    """Belirli gün ve sıradaki cümleyi getirir."""
     conn = baglanti()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT * FROM cumleler
-        WHERE gun = ?
-        ORDER BY id
-        LIMIT 1 OFFSET ?
+        SELECT * FROM cumleler WHERE gun = ?
+        ORDER BY id LIMIT 1 OFFSET ?
     """, (gun, sira))
     row = cursor.fetchone()
     conn.close()
@@ -129,25 +121,17 @@ def cumle_getir_db(gun, sira):
 
 
 def gun_getir_db(gun):
-    """Veritabanından belirli günün tüm bilgilerini getirir."""
+    """Belirli günün tüm bilgilerini getirir."""
     conn = baglanti()
     cursor = conn.cursor()
 
-    # Günün seviyesi ve teması
-    cursor.execute("""
-        SELECT DISTINCT seviye FROM cumleler WHERE gun = ?
-    """, (gun,))
+    cursor.execute("SELECT DISTINCT seviye FROM cumleler WHERE gun = ?", (gun,))
     seviye_row = cursor.fetchone()
     if not seviye_row:
         conn.close()
         return None
 
-    # Günün cümleleri
-    cursor.execute("""
-        SELECT * FROM cumleler
-        WHERE gun = ?
-        ORDER BY id
-    """, (gun,))
+    cursor.execute("SELECT * FROM cumleler WHERE gun = ? ORDER BY id", (gun,))
     rows = cursor.fetchall()
     conn.close()
 
@@ -162,10 +146,120 @@ def gun_getir_db(gun):
             "varyasyonlar": json.loads(row["varyasyonlar"]) if row["varyasyonlar"] else []
         })
 
+    return {"seviye": seviye_row["seviye"], "cumleler": cumleler}
+
+
+def kullanici_olustur(isim):
+    """Yeni kullanıcı oluşturur."""
+    conn = baglanti()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO kullanicilar (isim) VALUES (?)", (isim,))
+    kullanici_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return kullanici_id
+
+
+def kullanici_getir(kullanici_id):
+    """Kullanıcı bilgilerini getirir."""
+    conn = baglanti()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM kullanicilar WHERE id = ?", (kullanici_id,))
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return None
+
     return {
-        "seviye": seviye_row["seviye"],
-        "cumleler": cumleler
+        "id": row["id"],
+        "isim": row["isim"],
+        "seviye": row["seviye"],
+        "kufur_sayisi": row["kufur_sayisi"],
+        "dogru_sayisi": row["dogru_sayisi"],
+        "yanlis_sayisi": row["yanlis_sayisi"],
+        "streak": row["streak"],
+        "son_aktivite": row["son_aktivite"]
     }
+
+
+def cevap_kaydet(kullanici_id, cumle_id, dogru_mu):
+    """Cevabı kaydeder ve SM-2 ile sonraki tarihi hesaplar."""
+    conn = baglanti()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT * FROM cevaplar
+        WHERE kullanici_id = ? AND cumle_id = ?
+    """, (kullanici_id, cumle_id))
+    mevcut = cursor.fetchone()
+
+    if mevcut:
+        mevcut_aralik = mevcut["aralik"] or 0
+        mevcut_kolaylik = mevcut["kolaylik"] or 2.5
+        mevcut_tekrar = mevcut["tekrar"] or 0
+
+        sonuc = sm2_hesapla(dogru_mu, mevcut_aralik, mevcut_kolaylik, mevcut_tekrar)
+
+        cursor.execute("""
+            UPDATE cevaplar
+            SET dogru_mu = ?, tarih = CURRENT_TIMESTAMP, sonraki_sorulma = ?,
+                aralik = ?, kolaylik = ?, tekrar = ?
+            WHERE kullanici_id = ? AND cumle_id = ?
+        """, (
+            dogru_mu, sonuc["sonraki_tarih"],
+            sonuc["aralik"], sonuc["kolaylik"], sonuc["tekrar"],
+            kullanici_id, cumle_id
+        ))
+    else:
+        sonuc = sm2_hesapla(dogru_mu)
+        cursor.execute("""
+            INSERT INTO cevaplar
+            (kullanici_id, cumle_id, dogru_mu, sonraki_sorulma, aralik, kolaylik, tekrar)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            kullanici_id, cumle_id, dogru_mu,
+            sonuc["sonraki_tarih"], sonuc["aralik"],
+            sonuc["kolaylik"], sonuc["tekrar"]
+        ))
+
+    if dogru_mu:
+        cursor.execute("""
+            UPDATE kullanicilar
+            SET dogru_sayisi = dogru_sayisi + 1, son_aktivite = CURRENT_TIMESTAMP
+            WHERE id = ?
+        """, (kullanici_id,))
+    else:
+        cursor.execute("""
+            UPDATE kullanicilar
+            SET yanlis_sayisi = yanlis_sayisi + 1,
+                kufur_sayisi = kufur_sayisi + 1,
+                son_aktivite = CURRENT_TIMESTAMP
+            WHERE id = ?
+        """, (kullanici_id,))
+
+    conn.commit()
+    conn.close()
+    return sonuc
+
+
+def tekrar_listesi(kullanici_id):
+    """Kullanıcının tekrar etmesi gereken cümleleri getirir."""
+    conn = baglanti()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT cumle_id, sonraki_sorulma FROM cevaplar
+        WHERE kullanici_id = ?
+    """, (kullanici_id,))
+    cevaplar = cursor.fetchall()
+    conn.close()
+
+    liste = []
+    for c in cevaplar:
+        if tekrar_zamani_geldi_mi(c["sonraki_sorulma"]):
+            liste.append(c["cumle_id"])
+    return liste
 
 
 if __name__ == "__main__":
