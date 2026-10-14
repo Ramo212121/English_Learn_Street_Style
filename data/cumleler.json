@@ -9,7 +9,7 @@
         "turkce": "Adın ne?",
         "baglam": "Tanışma",
         "ipucu": "Bunu bilmiyorsan a*na koyim!",
-        "varyasyonlar": ["What is your name?", "May I ask your name?"]
+        "varyasyonlar": ["What is your name?", "May I ask your name?", "Whats your name", "What's ur name"]
       },
       {
         "id": 2,
@@ -17,7 +17,7 @@
         "turkce": "Benim adım Ali.",
         "baglam": "Cevap",
         "ipucu": "'My name is' kalıbı, 'I am name' değil!",
-        "varyasyonlar": ["I'm Ali.", "They call me Ali."]
+        "varyasyonlar": ["I'm Ali.", "They call me Ali.", "My name's Ali", "I am Ali"]
       },
       {
         "id": 3,
@@ -25,7 +25,7 @@
         "turkce": "Tanıştığımıza memnun oldum.",
         "baglam": "Kibar",
         "ipucu": "Bunu demezsen kaba s*ktiğim olursun!",
-        "varyasyonlar": ["Nice to meet you too.", "Pleased to meet you."]
+        "varyasyonlar": ["Nice to meet you too.", "Pleased to meet you.", "Nice meeting you"]
       },
       {
         "id": 4,
@@ -33,7 +33,7 @@
         "turkce": "Nasılsın?",
         "baglam": "Selam",
         "ipucu": "'How you are' değil, 'How are you'!",
-        "varyasyonlar": ["How are you doing?", "How's it going?"]
+        "varyasyonlar": ["How are you doing?", "How's it going?", "How do you do?", "How you doing"]
       },
       {
         "id": 5,
@@ -41,7 +41,7 @@
         "turkce": "İyiyim, sağol.",
         "baglam": "Cevap",
         "ipucu": "'I fine' değil, 'I'm fine'! To be'ı s*ktin attın!",
-        "varyasyonlar": ["I'm good, thanks.", "I'm okay."]
+        "varyasyonlar": ["I'm good, thanks.", "I'm okay.", "I am fine", "Fine thanks", "I'm fine thank you"]
       },
       {
         "id": 6,
@@ -49,7 +49,7 @@
         "turkce": "Nerelisin?",
         "baglam": "Tanışma",
         "ipucu": "'From' nerede? S*kerim soruyu!",
-        "varyasyonlar": ["Where do you come from?"]
+        "varyasyonlar": ["Where do you come from?", "Where you from", "Where are you coming from"]
       },
       {
         "id": 7,
@@ -57,7 +57,7 @@
         "turkce": "Türkiye'denim.",
         "baglam": "Cevap",
         "ipucu": "'I from' değil, 'I'm from'!",
-        "varyasyonlar": ["I come from Turkey.", "I'm Turkish."]
+        "varyasyonlar": ["I come from Turkey.", "I'm Turkish.", "I am from Turkey", "Im from Turkey"]
       },
       {
         "id": 8,
@@ -65,7 +65,7 @@
         "turkce": "Kaç yaşındasın?",
         "baglam": "Tanışma",
         "ipucu": "Yaş sormak ayıp ama İngilizcede normal!",
-        "varyasyonlar": ["What's your age?"]
+        "varyasyonlar": ["What's your age?", "How old you are", "Whats your age"]
       },
       {
         "id": 9,
@@ -73,7 +73,7 @@
         "turkce": "25 yaşındayım.",
         "baglam": "Cevap",
         "ipucu": "'Years old' unutma, yoksa s*kerim!",
-        "varyasyonlar": ["I'm 25."]
+        "varyasyonlar": ["I'm 25.", "I am 25 years old", "Im 25", "I'm twenty five"]
       },
       {
         "id": 10,
@@ -81,7 +81,7 @@
         "turkce": "Ne iş yapıyorsun?",
         "baglam": "Tanışma",
         "ipucu": "'What you do' değil, 'What do you do'!",
-        "varyasyonlar": ["What's your job?", "What do you do for a living?"]
+        "varyasyonlar": ["What's your job?", "What do you do for a living?", "What you do", "Whats your job"]
       },
       {
         "id": 11,
@@ -89,7 +89,7 @@
         "turkce": "Öğrenciyim.",
         "baglam": "Cevap",
         "ipucu": "'I student' değil, 'I'm a student'! 'A' unutma!",
-        "varyasyonlar": ["I study.", "I'm studying."]
+        "varyasyonlar": ["I study.", "I'm studying.", "I am a student", "Im student"]
       },
       {
         "id": 12,
@@ -97,7 +97,7 @@
         "turkce": "İngilizce konuşuyor musun?",
         "baglam": "Soru",
         "ipucu": "'You speak' değil, 'Do you speak'!",
-        "varyasyonlar": ["Can you speak English?", "Do you know English?"]
+        "varyasyonlar": ["Can you speak English?", "Do you know English?", "You speak English", "Can you speak english"]
       },
       {
         "id": 13,
@@ -105,7 +105,7 @@
         "turkce": "Birazcık.",
         "baglam": "Cevap",
         "ipucu": "Bunu bilmiyorsan gerizekalısın!",
-        "varyasyonlar": ["Just a little.", "A bit."]
+        "varyasyonlar": ["Just a little.", "A bit.", "A little", "Little bit"]
       },
       {
         "id": 14,
@@ -113,7 +113,7 @@
         "turkce": "Nerede yaşıyorsun?",
         "baglam": "Soru",
         "ipucu": "'Where you live' değil, 'do' nerede?",
-        "varyasyonlar": ["Where are you living?"]
+        "varyasyonlar": ["Where are you living?", "Where you live", "Where do you stay"]
       },
       {
         "id": 15,
@@ -121,7 +121,7 @@
         "turkce": "İstanbul'da yaşıyorum.",
         "baglam": "Cevap",
         "ipucu": "'In' unutma, yoksa s*kerim!",
-        "varyasyonlar": ["I'm living in Istanbul.", "I stay in Istanbul."]
+        "varyasyonlar": ["I'm living in Istanbul.", "I stay in Istanbul.", "I am living in Istanbul", "I live in istanbul"]
       },
       {
         "id": 16,
@@ -129,7 +129,7 @@
         "turkce": "Sonra görüşürüz.",
         "baglam": "Veda",
         "ipucu": "'See you later' kalıp, ezberle!",
-        "varyasyonlar": ["See you soon.", "See you around."]
+        "varyasyonlar": ["See you soon.", "See you around.", "See you", "See ya"]
       },
       {
         "id": 17,
@@ -137,7 +137,7 @@
         "turkce": "Kendine iyi bak.",
         "baglam": "Veda",
         "ipucu": "Bunu demezsen kaba olursun!",
-        "varyasyonlar": ["Take care of yourself.", "Be well."]
+        "varyasyonlar": ["Take care of yourself.", "Be well.", "Take care of you"]
       },
       {
         "id": 18,
@@ -145,7 +145,7 @@
         "turkce": "İyi günler.",
         "baglam": "Veda",
         "ipucu": "Kibar versiyon, öğren lan!",
-        "varyasyonlar": ["Have a great day.", "Enjoy your day."]
+        "varyasyonlar": ["Have a great day.", "Enjoy your day.", "Have a good day.", "Have a wonderful day.", "Have a good one"]
       },
       {
         "id": 19,
@@ -153,7 +153,7 @@
         "turkce": "Günaydın.",
         "baglam": "Selam",
         "ipucu": "Sabah der, 'Good morning'!",
-        "varyasyonlar": ["Morning!", "Good morning to you."]
+        "varyasyonlar": ["Morning!", "Good morning to you.", "Goodmorning", "Good morning to you too"]
       },
       {
         "id": 20,
@@ -161,7 +161,7 @@
         "turkce": "İyi geceler.",
         "baglam": "Veda",
         "ipucu": "Gece der, 'Good night'!",
-        "varyasyonlar": ["Night!", "Good night, sleep well."]
+        "varyasyonlar": ["Night!", "Good night, sleep well.", "Goodnight", "Night night"]
       }
     ]
   }

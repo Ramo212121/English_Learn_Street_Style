@@ -233,7 +233,6 @@ def cevap_kaydet(kullanici_id, cumle_id, dogru_mu):
         cursor.execute("""
             UPDATE kullanicilar
             SET yanlis_sayisi = yanlis_sayisi + 1,
-                kufur_sayisi = kufur_sayisi + 1,
                 son_aktivite = CURRENT_TIMESTAMP
             WHERE id = ?
         """, (kullanici_id,))
@@ -263,9 +262,6 @@ def tekrar_listesi(kullanici_id):
 
 
 # ============ QUIZ FONKSİYONLARI ============
-
-import random
-
 
 def rastgele_cumle(gun=None):
     """Rastgele bir cümle getirir. Gün belirtilirse o günden."""
@@ -297,7 +293,12 @@ def rastgele_cumle(gun=None):
 
 
 def quiz_cevap_kontrol(cumle_id, kullanici_cevabi):
-    """Kullanıcının cevabını kontrol eder."""
+    """
+    Kullanıcının cevabını kontrol eder.
+    1. Basit karşılaştırma (normalize)
+    2. Varyasyon kontrolü
+    3. AI ile anlam kontrolü (fallback)
+    """
     conn = baglanti()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM cumleler WHERE id = ?", (cumle_id,))
@@ -308,18 +309,53 @@ def quiz_cevap_kontrol(cumle_id, kullanici_cevabi):
         return None
 
     dogru_cevap = row["ingilizce"]
+    varyasyonlar = json.loads(row["varyasyonlar"]) if row["varyasyonlar"] else []
 
     def normalize(s):
-        return s.lower().strip().replace("'", "'").replace("?", "").replace(".", "").replace("!", "")
+        """Metni normalize eder (küçük harf, noktalama yok)."""
+        return (s.lower().strip()
+                .replace("'", "'")
+                .replace("?", "")
+                .replace(".", "")
+                .replace("!", "")
+                .replace(",", "")
+                .replace("  ", " "))
 
+    # 1. Basit karşılaştırma
     dogru_mu = normalize(kullanici_cevabi) == normalize(dogru_cevap)
 
+    # 2. Varyasyonlara bak
     if not dogru_mu:
-        varyasyonlar = json.loads(row["varyasyonlar"]) if row["varyasyonlar"] else []
         for v in varyasyonlar:
             if normalize(kullanici_cevabi) == normalize(v):
                 dogru_mu = True
                 break
+
+    # 3. Hâlâ yanlışsa AI'ya sor (anlam kontrolü)
+    if not dogru_mu:
+        try:
+            from ai_engine import ai_cevap
+            prompt = f"""Kullanıcı şu İngilizce cümleyi yazdı: "{kullanici_cevabi}"
+Doğru cevap: "{dogru_cevap}"
+Diğer kabul edilebilir cevaplar: {varyasyonlar}
+
+Kullanıcının cevabı ANLAM olarak doğru mu? 
+Kurallar:
+- Yazım hatası olabilir
+- Noktalama olmayabilir
+- Büyük/küçük harf farkı olabilir
+- Anlam aynıysa DOĞRU kabul et
+
+Sadece "EVET" veya "HAYIR" yaz, başka bir şey yazma."""
+
+            ai_cevap_str = ai_cevap(prompt).strip().upper()
+
+            # "EVET" var mı, "HAYIR" var mı kontrol et
+            if "EVET" in ai_cevap_str and "HAYIR" not in ai_cevap_str:
+                dogru_mu = True
+                print(f"🤖 AI onayladı: '{kullanici_cevabi}' = '{dogru_cevap}'")
+        except Exception as e:
+            print(f"⚠️ AI kontrol hatası: {e}")
 
     return {
         "dogru_mu": dogru_mu,

@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify, send_file
+from flask_cors import CORS
 from ai_engine import (
     ai_cevap, cumle_getir, gun_getir,
     ingilizceyi_turkce_okunusa_cevir
@@ -13,7 +14,7 @@ import hashlib
 import os
 
 app = Flask(__name__)
-
+CORS(app)
 
 @app.route("/")
 def ana_sayfa():
@@ -284,6 +285,5 @@ def ses():
     except Exception as e:
         return jsonify({"hata": f"Ses üretilemedi: {e}"}), 500
 
-
 if __name__ == "__main__":
-    app.run(debug=True, port=5001)
+    app.run(debug=True, host='0.0.0.0', port=5001)
